@@ -29,11 +29,16 @@ def money(value):
         raise ValidationError("Ingresá un importe válido, con hasta dos decimales.")
 
 
-def totals(reservation):
-    sums = {
-        x["kind"]: x["total"]
-        for x in reservation.ledger.values("kind").annotate(total=Sum("amount"))
-    }
+def totals(reservation, entries=None):
+    if entries is None:
+        sums = {
+            x["kind"]: x["total"]
+            for x in reservation.ledger.values("kind").annotate(total=Sum("amount"))
+        }
+    else:
+        sums = {}
+        for entry in entries:
+            sums[entry.kind] = sums.get(entry.kind, Decimal(0)) + entry.amount
     charge, paid = sums.get("CHARGE", Decimal(0)), sums.get("PAYMENT", Decimal(0))
     return {"total": str(charge), "paid": str(paid), "balance": str(charge - paid)}
 

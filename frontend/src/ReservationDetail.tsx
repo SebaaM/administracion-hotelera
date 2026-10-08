@@ -21,7 +21,7 @@ export function ReservationDetail({
   close: () => void;
 }) {
   const [entry, setEntry] = useState<"CHARGE" | "PAYMENT" | null>(null),
-    [edit, setEdit] = useState(false),
+    [edit, setEdit] = useState<Reservation | null>(null),
     [confirmation, setConfirmation] = useState<"checkout" | "cancel" | null>(
       null,
     );
@@ -54,18 +54,19 @@ export function ReservationDetail({
   }
   async function submitGuest(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!edit) return;
     const f = Object.fromEntries(new FormData(e.currentTarget));
     if (
       await perform(
         () =>
           api(`reservations/${record.id}/`, "PATCH", {
             ...f,
-            expected_updated_at: record.updated_at,
+            expected_updated_at: edit.updated_at,
           }),
         "Datos de la reserva actualizados",
       )
     )
-      setEdit(false);
+      setEdit(null);
   }
   return (
     <Dialog title={`${record.code} · ${record.guest}`} onClose={close} wide>
@@ -83,7 +84,10 @@ export function ReservationDetail({
           </span>
           {record.contact && <span>{record.contact}</span>}
           {record.document && <span>Documento: {record.document}</span>}
-          <button className="text-button" onClick={() => setEdit(!edit)}>
+          <button
+            className="text-button"
+            onClick={() => setEdit(edit ? null : record)}
+          >
             <Pencil size={14} />
             Editar datos
           </button>
@@ -95,7 +99,7 @@ export function ReservationDetail({
               <Field label="Huésped">
                 <input
                   name="guest"
-                  defaultValue={record.guest}
+                  defaultValue={edit.guest}
                   required
                   maxLength={120}
                 />
@@ -103,19 +107,19 @@ export function ReservationDetail({
               <Field label="Contacto">
                 <input
                   name="contact"
-                  defaultValue={record.contact}
+                  defaultValue={edit.contact}
                   maxLength={120}
                 />
               </Field>
               <Field label="Documento">
                 <input
                   name="document"
-                  defaultValue={record.document}
+                  defaultValue={edit.document}
                   maxLength={80}
                 />
               </Field>
               <Field label="Notas">
-                <textarea name="notes" defaultValue={record.notes} rows={2} />
+                <textarea name="notes" defaultValue={edit.notes} rows={2} />
               </Field>
             </div>
             <button className="button primary" disabled={busy}>
@@ -183,7 +187,7 @@ export function ReservationDetail({
                 disabled={busy}
                 onClick={() => {
                   setEntry("CHARGE");
-                  setEdit(false);
+                  setEdit(null);
                   setConfirmation(null);
                 }}
               >
@@ -195,7 +199,7 @@ export function ReservationDetail({
                 disabled={busy || Number(record.balance) <= 0}
                 onClick={() => {
                   setEntry("PAYMENT");
-                  setEdit(false);
+                  setEdit(null);
                   setConfirmation(null);
                 }}
               >

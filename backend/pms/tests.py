@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from decimal import Decimal
 from threading import Barrier
+from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction, close_old_connections, connections
 from django.test import TestCase, TransactionTestCase
@@ -296,6 +297,45 @@ class PMSFlowTests(TestCase):
             HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(response.status_code, 200, response.data)
+
+    def test_room_cannot_be_deactivated_with_boolean_aliases(self):
+        self.book()
+        for value in [False, "false", "off", "0"]:
+            with self.subTest(active=value):
+                response = self.client.patch(
+                    f"/api/rooms/{self.room.pk}/", {"active": value}, format="json"
+                )
+                self.assertEqual(response.status_code, 400, response.data)
+                self.room.refresh_from_db()
+                self.assertTrue(self.room.active)
+
+    def test_account_response_uses_one_ledger_snapshot(self):
+        stay = self.book()
+
+        # Insert a real payment at the boundary between reading movements and
+        # computing totals, reproducing an interleaved write deterministically.
+        def payment_between_reads(reservation, *args, **kwargs):
+            add_entry(
+                reservation.pk,
+                {
+                    "kind": "PAYMENT",
+                    "amount": "40.00",
+                    "description": "Cobro concurrente",
+                    "method": "CASH",
+                },
+                self.user,
+            )
+            return totals(reservation, *args, **kwargs)
+
+        with patch("pms.views.totals", side_effect=payment_between_reads):
+            response = self.client.get("/api/state/")
+        self.assertEqual(response.status_code, 200)
+        account = response.data["reservations"][0]
+        self.assertEqual(len(account["ledger"]), 1)
+        self.assertEqual(Decimal(account["total"]), Decimal("200.00"))
+        self.assertEqual(Decimal(account["paid"]), Decimal("0.00"))
+        self.assertEqual(Decimal(account["balance"]), Decimal("200.00"))
+        self.assertEqual(Decimal(totals(stay)["paid"]), Decimal("40.00"))
 
 
 class ConcurrentBookingTests(TransactionTestCase):

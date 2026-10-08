@@ -46,6 +46,7 @@ def hotel():
 
 
 def reservation_data(r):
+    entries = list(r.ledger.select_related("created_by"))
     return {
         "id": r.pk,
         "code": f"R-{r.pk:05d}",
@@ -82,9 +83,9 @@ def reservation_data(r):
                 "created_at": e.created_at,
                 "user": e.created_by.username,
             }
-            for e in r.ledger.select_related("created_by")
+            for e in entries
         ],
-        **totals(r),
+        **totals(r, entries=entries),
     }
 
 
@@ -291,14 +292,15 @@ def room(request, pk):
             raise ValidationError(
                 "El tipo y la cantidad de camas se definen al crear la habitación."
             )
+        serializer = RoomInput(item, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
         if Allocation.objects.filter(unit__room=item, active=True).exists() and (
-            "capacity" in data or data.get("active") in [False, "false", "False"]
+            "capacity" in serializer.validated_data
+            or serializer.validated_data.get("active") is False
         ):
             raise ValidationError(
                 "No se puede cambiar la capacidad o desactivar una habitación con reservas activas."
             )
-        serializer = RoomInput(item, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
         serializer.save()
     return Response({"ok": True})
 
