@@ -23,7 +23,7 @@ Abrí `http://localhost:8080` en el servidor o `http://192.168.1.50:8080` desde 
 
 Entrá con la cuenta que creaste. En **Configuración → Habitaciones y camas**, creá el inventario real; en **Marca y secciones**, cargá logos, imágenes y los tres colores base. Las cuentas adicionales se crean en `/admin/`: una cuenta activa puede operar el PMS; una cuenta con permiso de personal (`is_staff`) también puede cambiar la configuración. Esta versión tiene dos niveles de acceso; los permisos detallados por área quedan pendientes de definición.
 
-El script genera contraseñas y clave de Django aleatorias en `.env` y no sobrescribe un archivo existente. Para cambiar la dirección del servidor, editá `DJANGO_ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS` en `.env` y ejecutá `docker compose up -d`. La moneda inicial es ARS y la zona horaria inicial es `America/Buenos_Aires`; `HOTEL_TIME_ZONE` se cambia en `.env`. La configuración regional completa es una ampliación pendiente.
+El script genera contraseñas y clave de Django aleatorias en `.env` y no sobrescribe un archivo existente. Para cambiar la dirección del servidor, editá `DJANGO_ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS` en `.env` y ejecutá `docker compose up -d`. La moneda inicial es ARS y la zona horaria inicial es `America/Argentina/Buenos_Aires`; `HOTEL_TIME_ZONE` se cambia en `.env`. Los horarios y comprobantes usan esa zona horaria en todos los puestos. La configuración regional completa es una ampliación pendiente.
 
 En Linux o macOS se puede copiar `.env.example` a `.env`, reemplazar los dos valores `GENERAR_CON_CONFIGURAR` por secretos aleatorios independientes y completar las direcciones del hotel antes de ejecutar Docker Compose.
 

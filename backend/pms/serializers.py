@@ -1,8 +1,10 @@
 from rest_framework import serializers
+from django.conf import settings
 from .models import Hotel, Room, Unit, Reservation, LedgerEntry, Maintenance
 
 
 class HotelSerializer(serializers.ModelSerializer):
+    timezone = serializers.SerializerMethodField()
     logo = serializers.ImageField(required=False, allow_null=True)
     cover = serializers.ImageField(required=False, allow_null=True)
 
@@ -18,8 +20,12 @@ class HotelSerializer(serializers.ModelSerializer):
             "cover",
             "sections",
             "currency",
+            "timezone",
         ]
         read_only_fields = ["currency"]
+
+    def get_timezone(self, obj):
+        return settings.TIME_ZONE
 
     def validate_sections(self, value):
         allowed = {"reservations", "billing", "cleaning", "maintenance"}

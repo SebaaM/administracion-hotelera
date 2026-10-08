@@ -446,7 +446,7 @@ export default function App() {
           <span>Nido PMS · Operación local</span>
           <span>
             {data
-              ? `Última lectura: ${new Date(data.server_time).toLocaleTimeString("es-AR")}`
+              ? `Última lectura: ${new Date(data.server_time).toLocaleTimeString("es-AR", { timeZone: data.hotel.timezone, hourCycle: "h23" })}`
               : "Conectando…"}
           </span>
         </footer>

@@ -21,7 +21,22 @@ export function ReservationDetail({
   close: () => void;
 }) {
   const [entry, setEntry] = useState<"CHARGE" | "PAYMENT" | null>(null),
-    [edit, setEdit] = useState(false);
+    [edit, setEdit] = useState(false),
+    [confirmation, setConfirmation] = useState<"checkout" | "cancel" | null>(
+      null,
+    );
+  async function confirmTransition() {
+    if (!confirmation) return;
+    if (
+      await perform(
+        () => api(`reservations/${record.id}/${confirmation}/`, "POST"),
+        confirmation === "checkout"
+          ? "Check-out registrado; limpieza pendiente"
+          : "Reserva cancelada",
+      )
+    )
+      setConfirmation(null);
+  }
   async function submitEntry(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.currentTarget));
@@ -141,11 +156,8 @@ export function ReservationDetail({
                 className="button danger"
                 disabled={busy}
                 onClick={() => {
-                  if (confirm("¿Cancelar esta reserva y liberar sus unidades?"))
-                    void perform(
-                      () => api(`reservations/${record.id}/cancel/`, "POST"),
-                      "Reserva cancelada",
-                    );
+                  setConfirmation("cancel");
+                  setEntry(null);
                 }}
               >
                 Cancelar reserva
@@ -157,15 +169,8 @@ export function ReservationDetail({
               className="button primary"
               disabled={busy}
               onClick={() => {
-                if (
-                  confirm(
-                    `¿Registrar la salida? Saldo pendiente: ${money(record.balance, data.hotel.currency)}. Se generará una tarea de limpieza.`,
-                  )
-                )
-                  void perform(
-                    () => api(`reservations/${record.id}/checkout/`, "POST"),
-                    "Check-out registrado; limpieza pendiente",
-                  );
+                setConfirmation("checkout");
+                setEntry(null);
               }}
             >
               Registrar check-out
@@ -179,6 +184,7 @@ export function ReservationDetail({
                 onClick={() => {
                   setEntry("CHARGE");
                   setEdit(false);
+                  setConfirmation(null);
                 }}
               >
                 <Plus size={16} />
@@ -190,6 +196,7 @@ export function ReservationDetail({
                 onClick={() => {
                   setEntry("PAYMENT");
                   setEdit(false);
+                  setConfirmation(null);
                 }}
               >
                 <Wallet size={16} />
@@ -198,6 +205,41 @@ export function ReservationDetail({
             </>
           )}
         </div>
+        {confirmation && (
+          <section
+            className="inline-form"
+            aria-label="Confirmación de operación"
+          >
+            <h3>
+              {confirmation === "checkout"
+                ? "Confirmar la salida"
+                : "Confirmar la cancelación"}
+            </h3>
+            <p>
+              {confirmation === "checkout"
+                ? `Saldo pendiente: ${money(record.balance, data.hotel.currency)}. Se liberarán las unidades y se generará una tarea de limpieza. El saldo se conserva en la cuenta.`
+                : "Se cancelará la reserva y se liberarán sus unidades."}
+            </p>
+            <div className="actions">
+              <button
+                className="button primary"
+                disabled={busy}
+                onClick={() => void confirmTransition()}
+              >
+                {confirmation === "checkout"
+                  ? "Confirmar check-out"
+                  : "Confirmar cancelación"}
+              </button>
+              <button
+                className="button"
+                disabled={busy}
+                onClick={() => setConfirmation(null)}
+              >
+                Volver
+              </button>
+            </div>
+          </section>
+        )}
         {entry && (
           <form className="inline-form" onSubmit={submitEntry}>
             <h3>{entry === "CHARGE" ? "Nuevo cargo" : "Nuevo cobro"}</h3>
@@ -281,7 +323,9 @@ export function ReservationDetail({
                 {record.ledger.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      {new Date(item.created_at).toLocaleDateString("es-AR")}
+                      {new Date(item.created_at).toLocaleDateString("es-AR", {
+                        timeZone: data.hotel.timezone,
+                      })}
                     </td>
                     <td>{item.description}</td>
                     <td>

@@ -27,6 +27,7 @@ export function Configuration({
 }) {
   const [tab, setTab] = useState<"brand" | "rooms">("brand"),
     [newRoom, setNewRoom] = useState(false),
+    [bedRoom, setBedRoom] = useState<Room | null>(null),
     [editRoom, setEditRoom] = useState<Room | null>(null),
     [editUnit, setEditUnit] = useState<Unit | null>(null);
   const [primary, setPrimary] = useState(data.hotel.primary_color),
@@ -105,6 +106,18 @@ export function Configuration({
       )
     )
       setEditUnit(null);
+  }
+  async function addBed(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!bedRoom) return;
+    const values = Object.fromEntries(new FormData(e.currentTarget));
+    if (
+      await perform(
+        () => api(`rooms/${bedRoom.id}/units/`, "POST", values),
+        "Cama creada",
+      )
+    )
+      setBedRoom(null);
   }
   return (
     <>
@@ -345,18 +358,7 @@ export function Configuration({
                   <button
                     className="button small add-bed"
                     disabled={busy}
-                    onClick={() => {
-                      const label = prompt("Nombre de la nueva cama");
-                      if (label)
-                        void perform(
-                          () =>
-                            api(`rooms/${room.id}/units/`, "POST", {
-                              name: label,
-                              rate: "0.00",
-                            }),
-                          "Cama creada; configurá su tarifa",
-                        );
-                    }}
+                    onClick={() => setBedRoom(room)}
                   >
                     <Plus size={15} />
                     Agregar cama
@@ -376,6 +378,40 @@ export function Configuration({
             </section>
           )}
         </>
+      )}
+      {bedRoom && (
+        <Dialog
+          title={`Agregar cama · ${bedRoom.name}`}
+          onClose={() => setBedRoom(null)}
+        >
+          <form onSubmit={addBed}>
+            <div className="dialog-body">
+              <Field label="Nombre de la nueva cama">
+                <input name="name" required maxLength={60} autoFocus />
+              </Field>
+              <Field label="Tarifa por cama y noche">
+                <input
+                  name="rate"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  defaultValue={0}
+                  required
+                />
+              </Field>
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              )}
+            </div>
+            <div className="dialog-footer">
+              <button className="button primary" disabled={busy}>
+                Crear cama
+              </button>
+            </div>
+          </form>
+        </Dialog>
       )}
       {newRoom && (
         <Dialog title="Nueva habitación" onClose={() => setNewRoom(false)}>

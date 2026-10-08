@@ -8,6 +8,7 @@ export type Hotel = {
   cover: string | null;
   sections: Record<string, boolean>;
   currency: string;
+  timezone: string;
 };
 export type User = { name: string; admin: boolean };
 export type Room = {
