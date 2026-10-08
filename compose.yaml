@@ -1,0 +1,53 @@
+name: nido-pms
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hotel_pms}
+      POSTGRES_USER: ${POSTGRES_USER:-hotel_pms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ejecutá primero configurar.ps1}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    command: sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/session/')"]
+      interval: 5s
+      timeout: 5s
+      start_period: 20s
+      retries: 12
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${PMS_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - media_data:/srv/media:ro
+      - static_data:/srv/static:ro
+volumes:
+  postgres_data:
+  media_data:
+  static_data:
