@@ -11,7 +11,7 @@ CSRF_TRUSTED_ORIGINS = [
     x for x in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if x
 ]
 if DEBUG:
-    CSRF_TRUSTED_ORIGINS += ['http://127.0.0.1:5173','http://localhost:5173']
+    CSRF_TRUSTED_ORIGINS += ["http://127.0.0.1:5173", "http://localhost:5173"]
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -68,7 +68,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 LANGUAGE_CODE = "es"
-TIME_ZONE = os.getenv("HOTEL_TIME_ZONE", "America/Buenos_Aires")
+TIME_ZONE = os.getenv("HOTEL_TIME_ZONE", "America/Argentina/Buenos_Aires")
+TIME_ZONE = {"America/Buenos_Aires": "America/Argentina/Buenos_Aires"}.get(
+    TIME_ZONE, TIME_ZONE
+)
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/static/"
