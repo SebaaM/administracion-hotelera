@@ -1,0 +1,46 @@
+name: Verificar integración del PMS
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verificar:
+    name: Django, PostgreSQL y React
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+      - name: Generar configuración de prueba
+        shell: bash
+        run: |
+          cp .env.example .env
+          python - <<'PY'
+          import secrets
+          from pathlib import Path
+          p = Path('.env')
+          content = p.read_text().replace('POSTGRES_PASSWORD=GENERAR_CON_CONFIGURAR', 'POSTGRES_PASSWORD=' + secrets.token_urlsafe(48))
+          content = content.replace('DJANGO_SECRET_KEY=GENERAR_CON_CONFIGURAR', 'DJANGO_SECRET_KEY=' + secrets.token_urlsafe(48))
+          p.write_text(content, encoding='utf-8')
+          PY
+      - name: Construir y levantar la instalación local
+        run: docker compose up -d --build
+      - name: Verificar Django y migraciones
+        run: |
+          docker compose exec -T backend python manage.py check
+          docker compose exec -T backend python manage.py makemigrations --check --dry-run
+      - name: Probar flujos y concurrencia con PostgreSQL
+        run: docker compose exec -T backend python manage.py test pms --noinput
+      - name: Comprobar acceso a la aplicación
+        run: |
+          curl --retry 10 --retry-connrefused --retry-delay 2 --fail http://localhost:8080/ > /dev/null
+          curl --fail http://localhost:8080/api/session/ > /dev/null
+      - name: Mostrar diagnóstico si hubo un error
+        if: failure()
+        run: docker compose logs --tail 80
+      - name: Detener servicios de prueba
+        if: always()
+        run: docker compose down
