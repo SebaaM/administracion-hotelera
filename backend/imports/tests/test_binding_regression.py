@@ -26,3 +26,16 @@ class BindingRegressionTests(TestCase):
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]["end"],"2026-09-03")
         self.assertEqual({n["text"] for n in rows[0]["notes"]},{"Llegada tarde","Segunda nota"})
+    def test_unchanged_manual_link_is_persisted_for_future_loads(self):
+        from datetime import date
+        from pms.models import Allocation
+        from imports.models import ImportBinding
+        existing=Reservation.objects.create(guest="Persona ficticia",start=date(2026,8,10),end=date(2026,8,13),status="CHECKED_OUT")
+        Allocation.objects.create(reservation=existing,unit=self.unit,start=existing.start,end=existing.end,rate=100,active=False)
+        draft=setup.PreviewTests.draft(self)
+        draft.source["candidates"]=[source_candidate(notes=[],colors=[])];draft.save()
+        decisions=setup.PreviewTests.reviewed(self);decisions["rows"]["AGO-26:2:10"]["reservation_id"]=existing.pk
+        preview=save_decisions(draft.pk,1,decisions,self.user)
+        self.assertEqual(preview["rows"][0]["action"],"UNCHANGED")
+        draft.refresh_from_db();apply_draft(draft.pk,draft.revision,self.user)
+        self.assertTrue(ImportBinding.objects.filter(profile=self.profile,reservation=existing).exists())

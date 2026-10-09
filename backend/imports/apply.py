@@ -36,6 +36,8 @@ def apply_draft(draft_id,expected_revision,user):
                     raise ValidationError("La vinculación cambió desde la revisión. Volvé a revisar.")
                 c=row["candidate"];reservation=locked.get(row["reservation_id"])
                 if row["action"]=="UNCHANGED":
+                    ImportBinding.objects.update_or_create(profile=draft.profile,reservation=reservation,
+                        defaults={"source_id":c["source_id"],"signature":c["origin_signature"],"content":c})
                     actions.append({"action":"UNCHANGED","reservation_id":reservation.pk,"source_id":c["source_id"]});continue
                 unit=Unit.objects.select_related("room").get(pk=c["unit_id"])
                 if reservation:
