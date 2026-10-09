@@ -16,12 +16,13 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from pms import views
 
 urlpatterns = [
+    path("api/imports/", include("imports.urls")),
     path("admin/", admin.site.urls),
     path("api/session/", views.session),
     path("api/login/", views.signin),

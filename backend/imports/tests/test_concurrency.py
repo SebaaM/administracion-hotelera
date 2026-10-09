@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from datetime import timedelta
 from django.test import TransactionTestCase
-from django.db import close_old_connections
+from django.db import close_old_connections, connections
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -32,7 +32,7 @@ class ImportConcurrencyTests(TransactionTestCase):
                 user=User.objects.get(pk=user_id);barrier.wait(timeout=10)
                 return ("ok",apply_draft(draft.pk,draft.revision,user).pk)
             except ValidationError:return ("conflict",None)
-            finally:close_old_connections()
+            finally:connections.close_all()
         with ThreadPoolExecutor(max_workers=2) as pool:return list(pool.map(work,drafts))
     def test_two_drafts_cannot_claim_same_bed(self):
         result=self.concurrent([self.prepare(),self.prepare()])
