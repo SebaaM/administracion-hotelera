@@ -46,6 +46,10 @@ export type Reservation = {
   start: string;
   end: string;
   notes: string;
+  import_notes: string;
+  import_colors: {hex: string; meaning?: string; sheet?: string; cell?: string}[];
+  financial_review_required: boolean;
+  ledger_signature: string;
   status: "CONFIRMED" | "IN_HOUSE" | "CHECKED_OUT" | "CANCELLED";
   updated_at: string;
   checkout_date: string | null;
@@ -55,7 +59,7 @@ export type Reservation = {
     room_id: number;
     room: string;
     kind: string;
-    rate: string;
+    rate: string | null;
   }[];
   ledger: Entry[];
   total: string;
@@ -96,7 +100,8 @@ export type Page =
   | "billing"
   | "cleaning"
   | "maintenance"
-  | "settings";
+  | "settings"
+  | "imports";
 export type Perform = (
   work: () => Promise<unknown>,
   message: string,

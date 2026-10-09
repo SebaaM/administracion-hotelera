@@ -38,7 +38,7 @@ export function Configuration({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const sections: Record<string, boolean> = {};
-    for (const p of ["reservations", "billing", "cleaning", "maintenance"]) {
+    for (const p of ["reservations", "billing", "cleaning", "maintenance", "imports"]) {
       sections[p] = f.get(`section_${p}`) === "on";
       f.delete(`section_${p}`);
     }
@@ -265,6 +265,7 @@ export function Configuration({
                   { key: "billing", label: "Cargos y cobros" },
                   { key: "cleaning", label: "Limpieza" },
                   { key: "maintenance", label: "Mantenimiento" },
+                  { key: "imports", label: "Importar reservas" },
                 ].map((p) => (
                   <label className="section-toggle" key={p.key}>
                     <span>{p.label}</span>

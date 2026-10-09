@@ -36,7 +36,7 @@ jobs:
           docker compose exec -T backend python manage.py check
           docker compose exec -T backend python manage.py makemigrations --check --dry-run
       - name: Probar flujos y concurrencia con PostgreSQL
-        run: docker compose exec -T backend python manage.py test pms --noinput
+        run: docker compose exec -T backend python manage.py test pms imports --noinput
       - name: Comprobar acceso a la aplicación
         run: |
           curl --retry 10 --retry-connrefused --retry-delay 2 --fail http://localhost:8080/ > /dev/null

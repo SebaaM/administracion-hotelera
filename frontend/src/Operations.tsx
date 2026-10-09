@@ -18,7 +18,7 @@ export function Billing({
       <div className="billing-summary">
         <Wallet />
         <div>
-          <span>Saldo pendiente total</span>
+          <span>Saldo de movimientos registrados</span>
           <strong>
             {money(
               records.reduce((sum, r) => sum + Number(r.balance), 0),
@@ -26,7 +26,7 @@ export function Billing({
             )}
           </strong>
         </div>
-        <p>Cargos, anticipos y cobros de las estadías.</p>
+        <p>Cargos, anticipos y cobros registrados. {records.filter(r => r.financial_review_required).length} cuentas pendientes de revisión.</p>
       </div>
       <section className="panel">
         <div className="panel-heading">
@@ -58,7 +58,7 @@ export function Billing({
                   <td>{money(r.total, data.hotel.currency)}</td>
                   <td>{money(r.paid, data.hotel.currency)}</td>
                   <td>
-                    <strong>{money(r.balance, data.hotel.currency)}</strong>
+                    <strong>{r.financial_review_required ? "Cuenta por revisar" : money(r.balance, data.hotel.currency)}</strong>
                   </td>
                   <td>
                     <button
