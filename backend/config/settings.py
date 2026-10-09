@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "rest_framework",
     "pms",
+    "imports",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

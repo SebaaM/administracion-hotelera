@@ -91,6 +91,11 @@ class Reservation(models.Model):
         ],
     )
     notes = models.TextField(blank=True)
+    import_notes = models.TextField(blank=True)
+    import_colors = models.JSONField(default=list)
+    financial_review_required = models.BooleanField(default=False)
+    account_reviewed_at = models.DateTimeField(null=True, blank=True)
+    account_reviewed_by = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.PROTECT, related_name='reviewed_accounts')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
@@ -112,7 +117,7 @@ class Allocation(models.Model):
     unit = models.ForeignKey(Unit, related_name="allocations", on_delete=models.PROTECT)
     start = models.DateField()
     end = models.DateField()
-    rate = models.DecimalField(max_digits=12, decimal_places=2)
+    rate = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     active = models.BooleanField(default=True)
 
     class Meta:
