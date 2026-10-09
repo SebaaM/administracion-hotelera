@@ -2,7 +2,7 @@
 
 Fecha: 9 de octubre de 2026  
 Rama: `feature/importacion-reservas`  
-Estado: diseño conversacional aprobado; especificación pendiente de revisión.
+Estado: especificación aprobada por el usuario; implementación pendiente.
 
 ## Objetivo y alcance
 
