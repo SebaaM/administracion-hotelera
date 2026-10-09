@@ -130,7 +130,7 @@ def build_preview(draft,decisions,note_decisions):
         if errors and action!="CONFLICT":action="REVIEW"
         c["source_id"]=str(binding.source_id) if binding else source_id or str(uuid.uuid5(uuid.NAMESPACE_URL,f"pms:{draft.profile_id}:{draft.pk}:{c['key']}"))
         result.append({"key":c["key"],"selected":selected,"action":action,"errors":errors,"candidate":c,
-            "reservation_id":reservation.pk if reservation else None,"before":reservation_data(reservation) if reservation else None,
+            "reservation_id":reservation.pk if reservation else None,"before":json.loads(json.dumps(reservation_data(reservation),default=str)) if reservation else None,
             "snapshot":snapshot(reservation) if reservation else "","suggestions":[{**s,"start":str(s["start"]),"end":str(s["end"])} for s in suggestions]})
     targets=Counter(r["reservation_id"] for r in result if r["selected"] and r["reservation_id"])
     for r in result:
