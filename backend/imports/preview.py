@@ -110,6 +110,10 @@ def build_preview(draft,decisions,note_decisions):
             if len(allocations)!=1:errors.append("Esta reserva tiene varias unidades: revisala desde el PMS.")
             changed=start!=reservation.start or end!=reservation.end or c["status"]!=reservation.status or not allocations or allocations[0].unit_id!=c["unit_id"]
             if changed and reservation.status!="CONFIRMED":errors.append("Una estadía operativa no permite cambiar fechas, unidad o estado desde la importación.")
+            if changed and unit and reservation.guests>(unit.room.capacity if unit.room.kind=="PRIVATE" else 1):
+                errors.append("La cantidad de huéspedes supera la capacidad de la unidad seleccionada.")
+            if c["status"]=="CANCELLED" and reservation.status!="CANCELLED" and reservation.ledger.filter(kind="PAYMENT").exists():
+                errors.append("Esta reserva tiene cobros: resolvé la devolución antes de cancelarla.")
             same=not changed and c["guest"]==reservation.guest and c["notes_text"]==reservation.import_notes and c["colors"]==reservation.import_colors
             if same:action="UNCHANGED"
             existing_binding=ImportBinding.objects.filter(profile=draft.profile,reservation=reservation).first()

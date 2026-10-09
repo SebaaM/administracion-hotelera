@@ -136,11 +136,11 @@ export function ReservationDetail({
         )}
         <div className="detail-totals">
           <div>
-            <small>Total de cargos</small>
+            <small>{record.financial_review_required ? "Cargos registrados" : "Total de cargos"}</small>
             <strong>{money(record.total, data.hotel.currency)}</strong>
           </div>
           <div>
-            <small>Cobrado</small>
+            <small>{record.financial_review_required ? "Cobros registrados" : "Cobrado"}</small>
             <strong>{money(record.paid, data.hotel.currency)}</strong>
           </div>
           <div>
@@ -228,7 +228,7 @@ export function ReservationDetail({
             </h3>
             <p>
               {confirmation === "checkout"
-                ? `Saldo pendiente: ${money(record.balance, data.hotel.currency)}. Se liberarán las unidades y se generará una tarea de limpieza. El saldo se conserva en la cuenta.`
+                ? `${record.financial_review_required ? "Cuenta pendiente de revisión. Saldo de movimientos registrados" : "Saldo pendiente"}: ${money(record.balance, data.hotel.currency)}. Se liberarán las unidades y se generará una tarea de limpieza. El saldo se conserva en la cuenta.`
                 : "Se cancelará la reserva y se liberarán sus unidades."}
             </p>
             <div className="actions">

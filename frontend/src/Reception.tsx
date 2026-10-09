@@ -78,7 +78,7 @@ function ReservationRows({
             </span>
             <span className="row-end">
               <Badge status={r.status} />
-              <small>{money(r.balance, currency)} pendiente</small>
+              <small>{r.financial_review_required ? "Cuenta pendiente de revisión" : `${money(r.balance, currency)} pendiente`}</small>
             </span>
           </button>
         ))
@@ -435,7 +435,7 @@ export function Reservations({
                 <td>
                   <Badge status={r.status} />
                 </td>
-                <td>{money(r.balance, data.hotel.currency)}</td>
+                <td>{r.financial_review_required ? <><strong>Cuenta pendiente de revisión</strong><small>Movimientos registrados: {money(r.balance, data.hotel.currency)}</small></> : money(r.balance, data.hotel.currency)}</td>
               </tr>
             ))}
           </tbody>

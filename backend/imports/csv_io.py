@@ -1,4 +1,4 @@
-import csv,json,uuid
+import csv,json,uuid,re
 from io import StringIO
 from datetime import date
 from rest_framework.exceptions import ValidationError
@@ -6,6 +6,38 @@ from .readers import LIMIT
 
 HEADERS=["id_origen","huésped","unidad_origen","llegada","salida","estado","observaciones","colores","referencias"]
 TEXT_FIELDS=["huésped","unidad_origen","observaciones"]
+# El máximo de campo coincide con el máximo de archivo, también para notas extensas.
+csv.field_size_limit(LIMIT)
+
+def valid_reference(ref):
+    if not isinstance(ref,dict) or set(ref)!={"sheet","cell"} or not all(isinstance(ref[k],str) for k in ("sheet","cell")):
+        raise ValueError("referencia")
+    if len(ref["sheet"])>255 or len(ref["cell"])>50:raise ValueError("referencia")
+
+def validate_metadata(refs,colors,notes):
+    if not all(isinstance(value,list) for value in (refs,colors,notes)):raise ValueError("metadatos")
+    protected=[];references=[]
+    for ref in refs:
+        if isinstance(ref,dict) and "csv_metadata" in ref:
+            fields=ref.get("protected")
+            if set(ref)!={"csv_metadata","protected"} or ref["csv_metadata"] is not True or not isinstance(fields,list):
+                raise ValueError("protección")
+            if not all(isinstance(field,str) and field in TEXT_FIELDS for field in fields):raise ValueError("protección")
+            protected+=fields
+        else:
+            valid_reference(ref);references.append(ref)
+    if len(protected)!=len(set(protected)):raise ValueError("protección repetida")
+    for note in notes:
+        if not isinstance(note,dict) or set(note)!={"text","refs"} or not isinstance(note["text"],str) or not isinstance(note["refs"],list):
+            raise ValueError("nota")
+        for ref in note["refs"]:valid_reference(ref)
+    for color in colors:
+        if not isinstance(color,dict) or set(color)-{"hex","meaning","sheet","cell"} or not isinstance(color.get("hex"),str):
+            raise ValueError("color")
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}",color["hex"]):raise ValueError("color")
+        if any(not isinstance(value,str) for value in color.values()):raise ValueError("color")
+    return references,protected
+
 def write_csv(candidates):
     stream=StringIO(newline="");writer=csv.DictWriter(stream,fieldnames=HEADERS);writer.writeheader()
     for c in candidates:
@@ -34,16 +66,10 @@ def read_csv(content):
             if sid in ids:raise ValueError("identificador duplicado")
             ids.add(sid)
             refs=json.loads(row["referencias"]);colors=json.loads(row["colores"]);notes=json.loads(row["observaciones"])
-            if not all(isinstance(v,list) for v in (refs,colors,notes)):raise ValueError("metadatos")
-            protected=[f for r in refs if isinstance(r,dict) and r.get("csv_metadata") for f in r.get("protected",[])]
-            refs=[r for r in refs if not (isinstance(r,dict) and r.get("csv_metadata"))]
+            refs,protected=validate_metadata(refs,colors,notes)
             for field in protected:
-                if field not in TEXT_FIELDS or not row[field].startswith("'"):raise ValueError("protección")
+                if not row[field].startswith("'"):raise ValueError("protección")
                 row[field]=row[field][1:]
-            for note in notes:
-                if not isinstance(note,dict) or not isinstance(note.get("text"),str) or not isinstance(note.get("refs"),list):raise ValueError("nota")
-            for color in colors:
-                if not isinstance(color,dict) or not isinstance(color.get("hex"),str):raise ValueError("color")
             start=date.fromisoformat(row["llegada"]);end=date.fromisoformat(row["salida"])
             if end<=start or (end-start).days>366:raise ValueError("fechas")
             if row["estado"] not in ("CONFIRMED","IN_HOUSE","CHECKED_OUT","CANCELLED"):raise ValueError("estado")
@@ -52,5 +78,5 @@ def read_csv(content):
                 "references":refs,"warnings":[]})
         if not rows:raise ValueError("sin reservas")
         return rows
-    except (ValueError,TypeError,KeyError,csv.Error,UnicodeError) as exc:
+    except (ValueError,TypeError,KeyError,csv.Error,UnicodeError,RecursionError) as exc:
         raise ValidationError("CSV inválido: usá el formato exportado por el PMS, con identificadores únicos y fechas válidas.") from exc

@@ -1,10 +1,9 @@
-import calendar
 import re
 from io import BytesIO
-from zipfile import ZipFile, BadZipFile
+from zipfile import ZipFile
 from defusedxml.ElementTree import fromstring
 from openpyxl import load_workbook
-from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
+from openpyxl.utils.cell import range_boundaries
 from openpyxl.styles.colors import COLOR_INDEX
 from rest_framework.exceptions import ValidationError
 
@@ -15,6 +14,13 @@ def label(value):
     if isinstance(value,(float,int)) and not isinstance(value,bool) and float(value).is_integer():
         return str(int(value))
     return str(value or "").strip()
+
+def checked_range(reference):
+    if not isinstance(reference,str) or len(reference)>40:raise ValueError("referencia")
+    left,top,right,bottom=range_boundaries(reference)
+    if any(v is None for v in (left,top,right,bottom)) or not (1<=left<=right<=400 and 1<=top<=bottom<=5000):
+        raise ValidationError("El Excel supera 5.000 filas o 400 columnas.")
+    return (right-left+1)*(bottom-top+1)
 
 def check_archive(content):
     if not content or len(content)>LIMIT:
@@ -28,25 +34,30 @@ def check_archive(content):
                 raise ValidationError("No se admiten macros.")
             if sum(i.file_size for i in archive.infolist())>32*1024*1024:
                 raise ValidationError("El Excel descomprimido supera 32 MB.")
-            total=0
+            total=expanded=comments=worksheets=0
             for name in names:
                 if not name.endswith(".xml"):continue
                 root=fromstring(archive.read(name),forbid_dtd=True,forbid_entities=True)
-                if name.startswith("xl/worksheets/sheet"):
-                    for element in root.iter():
-                        tag=element.tag.rsplit("}",1)[-1]
-                        if tag=="dimension":
-                            ref=element.get("ref","A1").split(":")[-1]
-                            col,row=coordinate_from_string(ref)
-                            if row>5000 or column_index_from_string(col)>400:
-                                raise ValidationError("El Excel supera 5.000 filas o 400 columnas.")
-                        if tag=="c":
+                worksheet=root.tag.rsplit("}",1)[-1]=="worksheet"
+                if worksheet:
+                    worksheets+=1
+                    if worksheets>20:raise ValidationError("Se admiten hasta 20 hojas.")
+                for element in root.iter():
+                    tag=element.tag.rsplit("}",1)[-1]
+                    if worksheet:
+                        if tag=="dimension":checked_range(element.get("ref"))
+                        elif tag=="row":
+                            if not 1<=int(element.get("r","0"))<=5000:raise ValueError("fila")
+                        elif tag=="c":
                             total+=1
-                            col,row=coordinate_from_string(element.get("r","A1"))
-                            if row>5000 or column_index_from_string(col)>400:
-                                raise ValidationError("Hay celdas fuera de los límites admitidos.")
-            if total>100000:
-                raise ValidationError("El Excel supera 100.000 celdas.")
+                            if checked_range(element.get("r"))!=1:raise ValueError("celda")
+                        elif tag in ("mergeCell","hyperlink"):
+                            expanded+=checked_range(element.get("ref"))
+                    if tag in ("comment","threadedComment"):
+                        comments+=1
+                        if checked_range(element.get("ref"))!=1:raise ValueError("nota")
+                    if total>100000 or expanded>100000 or comments>100000:
+                        raise ValidationError("El Excel supera 100.000 celdas o posiciones expandidas de rangos.")
     except ValidationError:raise
     except Exception as exc:
         raise ValidationError("Subí un Excel .xlsx válido, sin macros ni entidades XML.") from exc
@@ -85,14 +96,14 @@ def read_xlsx(content):
             if sheet.merged_cells.ranges:warnings.append("Hay celdas fusionadas: confirmá manualmente filas y fechas.")
             if sheet.conditional_formatting:warnings.append("Hay formato condicional: sus colores requieren revisión manual.")
             cells=[]
-            for row in sheet.iter_rows():
-                for c in row:
-                    note=c.comment.text if c.comment else ""
-                    color=color_hex(c.fill.fgColor,themes) if c.fill.patternType=="solid" else None
-                    if c.value is None and not note and not color:continue
-                    cells.append({"ref":c.coordinate,"row":c.row,"col":c.column,"value":label(c.value),
-                        "note":note,"author":c.comment.author if c.comment else "",
-                        "color":color,"kind":c.data_type})
+            # openpyxl 3.1.5 fijado: iter_rows crea celdas vacías en todo el rectángulo.
+            for c in sorted(sheet._cells.values(),key=lambda c:(c.row,c.column)):
+                note=c.comment.text if c.comment else ""
+                color=color_hex(c.fill.fgColor,themes) if c.fill.patternType=="solid" else None
+                if c.value is None and not note and not color:continue
+                cells.append({"ref":c.coordinate,"row":c.row,"col":c.column,"value":label(c.value),
+                    "note":note,"author":c.comment.author if c.comment else "",
+                    "color":color,"kind":c.data_type})
             sheets.append({"name":sheet.title,"cells":cells,"warnings":warnings})
         book.close()
         return {"format":"xlsx","sheets":sheets}
@@ -105,7 +116,8 @@ def suggest_configuration(source):
         cells=sheet["cells"];heads={}
         for c in cells:
             if c["kind"]!="f" and c["value"]=="1":heads.setdefault(c["row"],[]).append(c["col"])
-        headers=[r for r,cols in heads.items() if any(x["row"]==r and x["col"]==col+1 and x["value"]=="2" for col in cols for x in cells)]
+        by_position={(c["row"],c["col"]):c["value"] for c in cells}
+        headers=[r for r,cols in heads.items() if any(by_position.get((r,col+1))=="2" for col in cols)]
         label_col=max(1,min((c["col"] for c in cells if c["value"]),default=1))
         units=[c["row"] for c in cells if c["col"]==label_col and c["row"] not in headers and re.fullmatch(r"\d+(?:[- ]?[a-zA-Z]+)?",c["value"])]
         match=re.search(r"(?i)(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[^0-9]*(\d{2,4})",sheet["name"])
