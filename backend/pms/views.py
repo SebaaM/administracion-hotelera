@@ -1,4 +1,4 @@
-import json
+import json, hashlib
 from datetime import date
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction, IntegrityError
@@ -60,6 +60,7 @@ def reservation_data(r):
         "import_notes": r.import_notes,
         "import_colors": r.import_colors,
         "financial_review_required": r.financial_review_required,
+        "ledger_signature": hashlib.sha256(json.dumps([(e.pk, e.kind, str(e.amount), e.description, e.method) for e in entries], sort_keys=True).encode()).hexdigest(),
         "status": r.status,
         "updated_at": r.updated_at,
         "checkout_date": timezone.localtime(r.checked_out_at).date()

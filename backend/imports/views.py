@@ -13,6 +13,7 @@ from .services import create_draft,save_decisions,check_version
 from .preview import candidates_for
 from .apply import apply_draft
 from .csv_io import write_csv
+from .readers import suggest_configuration
 
 def profile_data(profile):
     return {"id":profile.pk,"name":profile.name,"configuration":profile.configuration}
@@ -22,6 +23,12 @@ def draft_data(draft,full=True):
         "state":draft.state,"created_at":draft.created_at,"configuration":draft.configuration,"decisions":draft.decisions}
     if full:
         result["preview"]=draft.preview
+        result["sheet_suggestions"]=suggest_configuration(draft.source)
+        if draft.source.get("format")=="csv":
+            result["source_units"]=sorted({c["source_unit"] for c in draft.source.get("candidates",[])})
+        else:
+            configs={c["name"]:c for c in draft.configuration.get("sheets",[])}
+            result["source_units"]=sorted({cell["value"] for sheet in draft.source.get("sheets",[]) for cell in sheet["cells"] if sheet["name"] in configs and cell["row"] in configs[sheet["name"]]["unit_rows"] and cell["col"]==configs[sheet["name"]]["label_col"]})
         result["source_summary"]={"format":draft.source.get("format"),"sheets":[{"name":s["name"],
             "notes":sum(bool(c.get("note")) for c in s["cells"]),"colors":dict(Counter(c["color"] for c in s["cells"] if c.get("color"))),
             "warnings":s.get("warnings",[])} for s in draft.source.get("sheets",[])]}

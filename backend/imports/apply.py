@@ -52,7 +52,7 @@ def apply_draft(draft_id,expected_revision,user):
                     Allocation.objects.create(reservation=reservation,unit=unit,start=c["start"],end=c["end"],rate=None,active=c["status"] in ("CONFIRMED","IN_HOUSE"))
                 reservation.import_notes=c["notes_text"];reservation.import_colors=c["colors"];reservation.save()
                 ImportBinding.objects.update_or_create(profile=draft.profile,reservation=reservation,
-                    defaults={"source_id":c["source_id"],"signature":identity(c),"content":c})
+                    defaults={"source_id":c["source_id"],"signature":c["origin_signature"],"content":c})
                 actions.append({"action":row["action"],"reservation_id":reservation.pk,"source_id":c["source_id"]})
             batch=ImportBatch.objects.create(draft=draft,user=user,actions=actions)
             draft.state="APPLIED";draft.revision+=1;draft.save()

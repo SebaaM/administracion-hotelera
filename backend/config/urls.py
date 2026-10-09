@@ -20,6 +20,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from pms import views
+from imports.account import account_review
 
 urlpatterns = [
     path("api/imports/", include("imports.urls")),
@@ -29,6 +30,7 @@ urlpatterns = [
     path("api/logout/", views.signout),
     path("api/state/", views.state),
     path("api/settings/", views.configure),
+    path("api/reservations/<int:pk>/account-review/", account_review),
     path("api/reservations/", views.reservations),
     path("api/reservations/<int:pk>/", views.reservation),
     path("api/reservations/<int:pk>/ledger/", views.ledger),

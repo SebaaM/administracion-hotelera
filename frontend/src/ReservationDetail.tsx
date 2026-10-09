@@ -5,6 +5,7 @@ import type { Reservation, State, Perform } from "./types";
 import { api } from "./api";
 import { Dialog, Field, Badge, dateLabel, money } from "./ui";
 import { PrintButton } from "./Operations";
+import { AccountReview } from "./imports/AccountReview";
 export function ReservationDetail({
   record,
   data,
@@ -25,6 +26,7 @@ export function ReservationDetail({
     [confirmation, setConfirmation] = useState<"checkout" | "cancel" | null>(
       null,
     );
+  const [accountReview, setAccountReview] = useState<Reservation | null>(null);
   async function confirmTransition() {
     if (!confirmation) return;
     if (
@@ -93,6 +95,11 @@ export function ReservationDetail({
           </button>
         </div>
         {record.notes && <p className="reservation-note">{record.notes}</p>}
+        {record.import_notes && <><h3 className="import-note-title">Observaciones de la planilla</h3><p className="import-note">{record.import_notes}</p></>}
+        {!!record.import_colors?.length && <div className="import-colors">{Array.from(new Set(record.import_colors.map(c => c.hex))).map(hex => <span key={hex}><i className="import-color" style={{background:hex}}/>{record.import_colors.find(c => c.hex === hex)?.meaning || hex}</span>)}</div>}
+        {record.units.some(u => u.rate === null) && <p className="muted">Sin tarifa importada. Los importes se verifican en la cuenta.</p>}
+        {record.financial_review_required && <section className="import-account-warning"><strong>Cuenta pendiente de revisión</strong><p>Los movimientos registrados todavía pueden no representar la cuenta completa de esta estadía.</p><button className="button small" disabled={busy} onClick={() => setAccountReview(record)}>Revisar cuenta migrada</button></section>}
+        {accountReview && <AccountReview snapshot={accountReview} perform={perform} busy={busy} onClose={() => setAccountReview(null)} />}
         {edit && (
           <form className="inline-form" onSubmit={submitGuest}>
             <div className="form-grid">
@@ -137,7 +144,7 @@ export function ReservationDetail({
             <strong>{money(record.paid, data.hotel.currency)}</strong>
           </div>
           <div>
-            <small>Saldo pendiente</small>
+            <small>{record.financial_review_required ? "Saldo de movimientos registrados" : "Saldo pendiente"}</small>
             <strong>{money(record.balance, data.hotel.currency)}</strong>
           </div>
         </div>
@@ -353,10 +360,11 @@ export function ReservationDetail({
               <p className="empty compact">Sin movimientos registrados.</p>
             )}
           </div>
+          {record.financial_review_required && <p className="import-account-warning"><strong>Cuenta pendiente de revisión.</strong> Los importes corresponden únicamente a movimientos registrados.</p>}
           <div className="print-totals">
             <p>Total de cargos: {money(record.total, data.hotel.currency)}</p>
             <p>Cobrado: {money(record.paid, data.hotel.currency)}</p>
-            <strong>Saldo: {money(record.balance, data.hotel.currency)}</strong>
+            <strong>{record.financial_review_required ? "Saldo registrado (cuenta por revisar): " : "Saldo: "}{money(record.balance, data.hotel.currency)}</strong>
           </div>
           <p className="receipt-disclaimer">
             Comprobante interno. No constituye una factura fiscal.

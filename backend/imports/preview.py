@@ -42,7 +42,7 @@ def candidates_for(draft):
         first["warnings"]=["Continuidad entre hojas confirmada: revisá fechas finales."]
     return [r for r in rows if r["key"] not in used]
 
-def pending_notes(draft,candidates,note_decisions):
+def pending_notes(draft,candidates,note_decisions,row_decisions):
     associated={(r.get("sheet"),r.get("cell")) for c in candidates for r in c["references"]}
     by_key={c["key"]:c for c in candidates}
     pending=[]
@@ -54,7 +54,7 @@ def pending_notes(draft,candidates,note_decisions):
             ref={"sheet":sheet["name"],"cell":cell["ref"]};key=sheet["name"]+"!"+cell["ref"]
             decision=note_decisions.get(key,{})
             if decision.get("action")=="EXCLUDE" and str(decision.get("reason","")).strip():continue
-            if decision.get("action")=="ASSIGN" and decision.get("target") in by_key:
+            if decision.get("action")=="ASSIGN" and decision.get("target") in by_key and row_decisions.get(decision["target"],{}).get("selected",True):
                 add_note(by_key[decision["target"]]["notes"],cell["note"],ref)
                 continue
             pending.append({"key":key,**ref,"text":cell["note"]})
@@ -63,9 +63,10 @@ def pending_notes(draft,candidates,note_decisions):
 def build_preview(draft,decisions,note_decisions):
     candidates=candidates_for(draft);keys={c["key"] for c in candidates}
     if any(key not in keys for key in decisions):raise ValidationError("Una decisión no corresponde al borrador actual.")
-    pending=pending_notes(draft,candidates,note_decisions)
+    pending=pending_notes(draft,candidates,note_decisions,decisions)
     result=[];mapping=draft.configuration.get("mapping",{})
     for c in candidates:
+        c["origin_signature"]=identity(c)
         decision=decisions.get(c["key"],{})
         selected=decision.get("selected",True)
         if not isinstance(selected,bool):raise ValidationError("La selección debe ser verdadera o falsa.")
@@ -94,7 +95,7 @@ def build_preview(draft,decisions,note_decisions):
             try:binding=ImportBinding.objects.filter(profile=draft.profile,source_id=uuid.UUID(source_id)).select_related("reservation").first()
             except (ValueError,TypeError):errors.append("El identificador de origen no es válido.")
         else:
-            matches=list(ImportBinding.objects.filter(profile=draft.profile,signature=identity(c)).select_related("reservation"))
+            matches=list(ImportBinding.objects.filter(profile=draft.profile,signature=c["origin_signature"]).select_related("reservation"))
             if len(matches)==1:binding=matches[0]
         target=decision.get("reservation_id")
         if target:

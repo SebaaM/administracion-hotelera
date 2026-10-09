@@ -1,0 +1,9 @@
+export type SheetConfig = {name:string;year:number;month:number;label_col:number;header_rows:number[];unit_rows:number[]};
+export type Configuration = {sheets?:SheetConfig[];mapping?:Record<string,number>;mapping_confirmed?:boolean;legend?:Record<string,string>};
+export type Profile = {id:number;name:string;configuration:Configuration};
+export type Decision = {selected?:boolean;guest?:string;start?:string;end?:string;status?:string;unit_id?:number|null;reservation_id?:number|null;reviewed?:boolean;new_confirmed?:boolean};
+export type Decisions = {rows?:Record<string,Decision>;notes?:Record<string,{action:string;target?:string;reason?:string}>;joins?:string[][]};
+export type Candidate = {key:string;source_id:string;source_unit:string;guest:string;start:string;end:string;status:string;unit_id:number|null;notes:{text:string;refs:{sheet:string;cell:string}[]}[];notes_text:string;colors:{hex:string;meaning?:string;sheet?:string;cell?:string}[];references:{sheet:string;cell:string}[];warnings:string[]};
+export type Row = {key:string;selected:boolean;action:string;errors:string[];candidate:Candidate;reservation_id:number|null;snapshot:string;before:{guest:string;start:string;end:string;status:string;import_notes:string;units:{name:string;room:string}[]}|null;suggestions:{id:number;guest:string;start:string;end:string}[]};
+export type Preview = {rows:Row[];pending_notes:{key:string;text:string;sheet:string;cell:string}[];summary:Record<string,number>;revision:number;can_apply:boolean};
+export type Draft = {id:number;profile_id:number;filename:string;revision:number;state:"DRAFT"|"APPLIED"|"DISCARDED";created_at:string;configuration:Configuration;decisions:Decisions;preview:Partial<Preview>;source_units?:string[];sheet_suggestions?:SheetConfig[];source_summary?:{format:string;sheets:{name:string;notes:number;colors:Record<string,number>;warnings:string[]}[]};batch?:{id:number;actions:{action:string;reservation_id:number}[]}};

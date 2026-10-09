@@ -14,6 +14,7 @@ import {
   Menu,
   RefreshCw,
   Building2,
+  FileSpreadsheet,
 } from "lucide-react";
 import { api, ApiError } from "./api";
 import type { Hotel, User, State, Page } from "./types";
@@ -25,6 +26,7 @@ import { Reception, Reservations, NewReservation } from "./Reception";
 import { registerPmsTools } from "./webmcp";
 import { flushSync } from "react-dom";
 import "./App.css";
+import { ImportPage } from "./imports/ImportPage";
 const pageNames: Record<Page, string> = {
   overview: "Vista general",
   reservations: "Reservas",
@@ -32,6 +34,7 @@ const pageNames: Record<Page, string> = {
   cleaning: "Limpieza",
   maintenance: "Mantenimiento",
   settings: "Configuración",
+  imports: "Importar reservas",
 };
 const icons = {
   overview: LayoutDashboard,
@@ -40,6 +43,7 @@ const icons = {
   cleaning: Brush,
   maintenance: Wrench,
   settings: Settings,
+  imports: FileSpreadsheet,
 };
 export default function App() {
   const [user, setUser] = useState<User | null>(null),
@@ -258,7 +262,7 @@ export default function App() {
         <nav>
           {(Object.keys(pageNames) as Page[])
             .filter(enabled)
-            .filter((p) => p !== "settings" || user.admin)
+            .filter((p) => !["settings", "imports"].includes(p) || user.admin)
             .map((p) => {
               const Icon = icons[p];
               return (
@@ -430,6 +434,7 @@ export default function App() {
                   error={error}
                 />
               )}
+              {currentPage === "imports" && user.admin && <ImportPage data={data} onApplied={load} />}
               {currentPage === "settings" && user.admin && (
                 <Configuration
                   key={data.hotel.name}

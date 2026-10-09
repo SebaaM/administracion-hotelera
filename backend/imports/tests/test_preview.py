@@ -45,3 +45,10 @@ class PreviewTests(TestCase):
         draft=self.draft()
         save_decisions(draft.pk,draft.revision,self.reviewed(),self.user)
         with self.assertRaises(ValidationError):save_decisions(draft.pk,draft.revision,self.reviewed(),self.user)
+    def test_orphan_assigned_to_excluded_reservation_stays_pending(self):
+        from imports.services import create_draft
+        from imports.preview import build_preview
+        draft=create_draft(calendar(),"prueba.xlsx",self.profile,self.user)
+        row_key="AGO-26:2:10"
+        result=build_preview(draft,{row_key:{"selected":False}}, {"AGO-26!A2":{"action":"ASSIGN","target":row_key}})
+        self.assertEqual(len(result["pending_notes"]),1)
