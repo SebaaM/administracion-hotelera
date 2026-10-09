@@ -42,6 +42,25 @@ Los puestos consultan al servidor cada cinco segundos cuando la pestaña está v
 
 La configuración de secciones modifica la navegación y conserva los datos y permisos. Cada hotel tiene su propia instalación y base: no es un servicio compartido con varios hoteles dentro de la misma base.
 
+## Migrar reservas desde Excel
+
+Una cuenta administradora puede abrir **Importar reservas** y cargar un archivo local `.xlsx` o un CSV normalizado por el PMS. Para Google Sheets, descargá **Archivo → Descargar → Microsoft Excel (.xlsx)**: un CSV descargado directamente de Sheets pierde notas y colores.
+
+El asistente guarda primero un borrador. Confirmá mes, año, filas de días y filas de camas/habitaciones; después vinculá las etiquetas de origen con el inventario del PMS y revisá cada estadía. Una celda con el nombre representa una noche: por ejemplo, una persona en las columnas 10, 11 y 12 sale el 13. Se conservan las fechas históricas. Los tramos entre hojas se unen únicamente mediante confirmación explícita y si son consecutivos, de la misma persona y unidad.
+
+Las notas pasan a observaciones importadas con sus referencias de origen, separadas de las notas manuales. Las notas en etiquetas o celdas sin estadía necesitan una reserva de destino o un motivo de exclusión. Los colores conservan su código y una leyenda editable; “Pagado”, “No pagado” y otros colores informan la revisión, pero no generan cargos ni cobros. El relleno base de celdas con formato condicional y las celdas combinadas necesitan revisión: no se calcula la apariencia condicional ni se ejecutan fórmulas.
+
+En la revisión se muestran altas, actualizaciones, filas sin cambios y conflictos. Podés corregir huésped, fechas, unidad y estado, vincular una reserva existente o excluir una fila. Un nombre coincidente solo sugiere una asociación; se necesita confirmación. La aplicación exige guardar la revisión y una confirmación final. El servidor vuelve a validar disponibilidad, mantenimiento, unidades activas y versiones; un conflicto revierte todo el lote. Un borrador con una versión obsoleta debe recargarse y revisarse.
+
+Un perfil guarda los períodos, el mapa de unidades y la leyenda para próximas cargas. Los vínculos de origen y las coincidencias exactas dentro del perfil evitan duplicados al repetir una carga; ante diferencias ambiguas, vinculá la reserva manualmente. Repetir la confirmación del mismo lote devuelve su resultado. Las reservas existentes con varias unidades requieren revisión desde el PMS; una estadía alojada, finalizada o cancelada no puede cambiar fechas, unidad o estado mediante importación.
+
+Las reservas nuevas se crean con tarifa desconocida y **Cuenta pendiente de revisión**, sin movimientos ni horarios históricos inventados. Las cuentas muestran los movimientos registrados hasta la conciliación. Después de cargar los cargos y cobros reales, usá **Revisar cuenta** en el detalle de la reserva. Una cuenta vacía necesita confirmación explícita de que no faltan movimientos; un cambio de cuenta durante la revisión obliga a revisarla nuevamente.
+
+**Exportar CSV** descarga las filas seleccionadas y resueltas con estas columnas: `id_origen`, `huésped`, `unidad_origen`, `llegada`, `salida`, `estado`, `observaciones`, `colores` y `referencias`. Observaciones, colores y referencias conservan JSON dentro de las celdas. El archivo usa UTF-8 con BOM y protege texto que podría interpretarse como fórmula; el PMS restaura ese texto al volver a cargarlo. Conservá el identificador de origen y usá el mismo perfil al reimportar. Ejemplo ficticio: “Persona ficticia”, cama “2-a”, llegada “2026-08-10”, salida “2026-08-13”.
+
+Límites: archivo de 5 MB; Excel de hasta 20 hojas, 100.000 celdas, 5.000 filas y 400 columnas por hoja, y 32 MB descomprimidos; CSV de hasta 10.000 reservas. El calendario Excel soportado usa etiquetas de unidades en una columna y días en encabezados repetidos. Otros formatos requieren adaptar su configuración o preparar el CSV normalizado. Los borradores y su procedencia se conservan en la base local protegida por permisos administrativos. **Descartar borrador** elimina la fuente y sus datos personales; los lotes aplicados conservan la auditoría. Los archivos reales, notas y nombres de huéspedes no deben subirse al repositorio público.
+
+
 ## Datos ficticios de demostración
 
 La demostración preparada en esta computadora contiene huéspedes e importes ficticios. Cuenta de prueba: `recepcion`, contraseña `Nido-Prueba-2026!`. Se carga mediante `seed_demo`, exclusivamente en una base sin habitaciones ni reservas y con `DJANGO_DEBUG=1`.
@@ -76,10 +95,10 @@ La estructura se generó con `django-admin startproject`, `startapp` y `create-v
 ```powershell
 docker compose exec backend python manage.py check
 docker compose exec backend python manage.py makemigrations --check --dry-run
-docker compose exec backend python manage.py test pms --noinput
+docker compose exec backend python manage.py test pms imports --noinput
 ```
 
-La construcción del contenedor web ejecuta `tsc -b` y `vite build`. El frontend conserva `package-lock.json` y las dependencias de backend están fijadas a las versiones verificadas.
+La construcción del contenedor web ejecuta las pruebas React con Vitest, `tsc -b` y `vite build`. El frontend conserva `package-lock.json` y las dependencias de backend están fijadas a las versiones verificadas.
 
 Las pruebas cubren habitaciones y camas, fechas contiguas, restricciones en PostgreSQL, reservas simultáneas, capacidad, cargos y cobros, limpieza, mantenimiento, cancelación, acceso, CSRF y configuración. GitHub Actions vuelve a construir la instalación y ejecutar las verificaciones en cada PR hacia `main` y cada actualización de `main`.
 
@@ -91,7 +110,7 @@ El navegador puede ofrecer herramientas WebMCP para consultar disponibilidad y a
 
 No incluye canales externos, reservas públicas, facturación fiscal, devoluciones, cambio de fechas o traslado de unidades de una reserva existente, tarifas de temporada, monedas múltiples ni permisos detallados por área. La cancelación de reservas con cobros está bloqueada hasta disponer de un flujo de devolución. Los cargos y cobros no se borran ni se editan: un flujo contable de correcciones y devoluciones requiere una próxima integración.
 
-Se puede editar el huésped, contacto, documento y notas. La cantidad de huéspedes y las fechas/unidades quedan fijadas al crear la reserva. Una habitación se define como privada o compartida; vender temporalmente un dormitorio como habitación completa queda pendiente.
+Se puede editar el huésped, contacto, documento y notas. La cantidad de huéspedes queda fijada al crear la reserva. Las fechas y unidades se pueden corregir durante una importación para reservas confirmadas, con revisión de disponibilidad y de cuenta; el detalle habitual no permite esos cambios. Una habitación se define como privada o compartida; vender temporalmente un dormitorio como habitación completa queda pendiente.
 
 El servicio se entrega para una red local de confianza, con HTTP en el puerto 8080. Para Wi-Fi compartida con huéspedes o redes no confiables, la puesta en producción necesita HTTPS local y aislamiento de red. No está preparado para exponerse públicamente en Internet. Antes de usarlo con datos reales, validar los procedimientos del hotel, la conexión desde otro puesto y la restauración de backups.
 
